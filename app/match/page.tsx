@@ -38,21 +38,29 @@ export default function MatchPage() {
 
   return (
     <main className="mx-auto flex max-w-xl flex-1 flex-col px-6 py-16">
-      <h1 className="text-2xl font-bold text-zinc-900">어르신 상태를 알려주세요</h1>
+      <h1 className="text-2xl font-bold text-zinc-900">
+        어르신 상태를 알려주세요
+      </h1>
       <p className="mt-2 text-sm text-zinc-500">
-        가격은 등급별로 이미 표준화돼 있어요. 비용보다 상태에 맞는 시설 유형을 먼저 찾아드릴게요.
+        가격은 등급별로 이미 표준화돼 있어요. 비용보다 상태에 맞는 시설 유형을
+        먼저 찾아드릴게요.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-7">
         <fieldset>
-          <legend className="text-sm font-semibold text-zinc-800">거동 상태</legend>
+          <legend className="text-sm font-semibold text-zinc-800">
+            거동 상태
+          </legend>
           <div className="mt-2 flex flex-col gap-2">
             {[
               { v: "independent", l: "혼자 이동 가능" },
               { v: "partial", l: "부분적인 도움 필요" },
               { v: "full", l: "거의 누워서 생활 (전적 도움)" },
             ].map((opt) => (
-              <label key={opt.v} className="flex items-center gap-2 text-sm text-zinc-700">
+              <label
+                key={opt.v}
+                className="flex items-center gap-2 text-sm text-zinc-700"
+              >
                 <input
                   type="radio"
                   name="mobility"
@@ -68,14 +76,19 @@ export default function MatchPage() {
         </fieldset>
 
         <fieldset>
-          <legend className="text-sm font-semibold text-zinc-800">인지 상태(치매 등)</legend>
+          <legend className="text-sm font-semibold text-zinc-800">
+            인지 상태(치매 등)
+          </legend>
           <div className="mt-2 flex flex-col gap-2">
             {[
               { v: "normal", l: "정상" },
               { v: "mild", l: "경증 치매/인지저하" },
               { v: "severe", l: "중증 치매/인지저하" },
             ].map((opt) => (
-              <label key={opt.v} className="flex items-center gap-2 text-sm text-zinc-700">
+              <label
+                key={opt.v}
+                className="flex items-center gap-2 text-sm text-zinc-700"
+              >
                 <input
                   type="radio"
                   name="cognition"
@@ -91,14 +104,19 @@ export default function MatchPage() {
         </fieldset>
 
         <fieldset>
-          <legend className="text-sm font-semibold text-zinc-800">상시 의료처치 필요 여부</legend>
+          <legend className="text-sm font-semibold text-zinc-800">
+            상시 의료처치 필요 여부
+          </legend>
           <div className="mt-2 flex flex-col gap-2">
             {[
               { v: "low", l: "특별한 의료처치 없음" },
               { v: "medium", l: "정기적인 처치(욕창 관리 등)" },
               { v: "high", l: "산소치료·튜브영양 등 상시 의료처치" },
             ].map((opt) => (
-              <label key={opt.v} className="flex items-center gap-2 text-sm text-zinc-700">
+              <label
+                key={opt.v}
+                className="flex items-center gap-2 text-sm text-zinc-700"
+              >
                 <input
                   type="radio"
                   name="medicalNeed"
@@ -114,7 +132,9 @@ export default function MatchPage() {
         </fieldset>
 
         <fieldset>
-          <legend className="text-sm font-semibold text-zinc-800">희망 지역 (선택)</legend>
+          <legend className="text-sm font-semibold text-zinc-800">
+            희망 지역 (선택)
+          </legend>
           <select
             value={region}
             onChange={(e) => setRegion(e.target.value)}
@@ -131,7 +151,7 @@ export default function MatchPage() {
 
         <button
           type="submit"
-          className="mt-2 rounded-full bg-purple-600 px-6 py-3 font-medium text-white transition hover:bg-purple-700"
+          className="mt-2 rounded-full bg-purple-600 px-6 py-3 font-bold text-white transition hover:bg-purple-700"
         >
           맞는 시설 보기
         </button>
