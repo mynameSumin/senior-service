@@ -18,8 +18,8 @@
 import { parse } from "csv-parse/sync";
 import iconv from "iconv-lite";
 import { fetchJson } from "../shared/http";
-import { db, startCrawlRun, finishCrawlRun } from "../shared/db";
-import { bestFacilityMatch } from "../shared/fuzzy";
+import { db, startCrawlRun, finishCrawlRun, fetchAllRows } from "../shared/db";
+import { buildNameIndex, matchWithIndex } from "../shared/fuzzy";
 
 const SOURCE = "datagokr:ltc_eval";
 const EVAL_PUBLIC_DATA_PK = "15104801"; // 장기요양기관 평가 결과
@@ -85,9 +85,14 @@ async function run() {
 
     console.log(`[${SOURCE}] CSV 파싱 완료: ${rows.length - 1}행`);
 
-    const { data: facilities } = await db.from("facilities").select("id, name, address");
-    const facilityPool = facilities ?? [];
+    const facilityPool = await fetchAllRows<{ id: string; name: string; address: string | null }>(
+      (from, to) => db.from("facilities").select("id, name, address").range(from, to)
+    );
+    const nameIndex = buildNameIndex(facilityPool);
 
+    // 같은 (facility_id, source, eval_year) 조합이 한 배치 안에 두 번 들어가면
+    // "ON CONFLICT DO UPDATE cannot affect row a second time" 에러가 난다 — 키로 합친다.
+    const toUpsertByKey = new Map<string, Record<string, unknown>>();
     for (const row of rows.slice(1)) {
       const serviceType = row[iServiceType]?.trim();
       const facilityType = SERVICE_TYPE_TO_FACILITY_TYPE[serviceType];
@@ -98,7 +103,7 @@ async function run() {
       if (!evalYear || !grade) continue;
 
       const name = row[iName]?.trim();
-      const match = bestFacilityMatch(name, row[iSido], facilityPool);
+      const match = matchWithIndex(name, row[iSido], nameIndex);
       if (!match || match.confidence < 0.6) {
         skippedNoMatch++;
         continue;
@@ -116,19 +121,26 @@ async function run() {
         if (!isNaN(v)) domain_scores[key] = v;
       }
 
-      const { error } = await db.from("evaluations").upsert(
-        {
-          facility_id: match.id,
-          source: "건보공단",
-          eval_year: evalYear,
-          grade,
-          domain_scores,
-          raw: { row_service_type: serviceType, row_name: name },
-        },
-        { onConflict: "facility_id,source,eval_year" }
-      );
+      toUpsertByKey.set(`${match.id}|건보공단|${evalYear}`, {
+        facility_id: match.id,
+        source: "건보공단",
+        eval_year: evalYear,
+        grade,
+        domain_scores,
+        raw: { row_service_type: serviceType, row_name: name },
+      });
+    }
+
+    // 행마다 순차 await하면 네트워크 왕복이 수천 번 쌓여 매우 느려진다 — 배치로 묶어서 보낸다.
+    const toUpsert = [...toUpsertByKey.values()];
+    const UPSERT_CHUNK_SIZE = 500;
+    for (let i = 0; i < toUpsert.length; i += UPSERT_CHUNK_SIZE) {
+      const chunk = toUpsert.slice(i, i + UPSERT_CHUNK_SIZE);
+      const { error } = await db
+        .from("evaluations")
+        .upsert(chunk, { onConflict: "facility_id,source,eval_year" });
       if (error) throw error;
-      inserted++;
+      inserted += chunk.length;
     }
 
     console.log(`[${SOURCE}] evaluations 적재: ${inserted}건, 매칭 실패(스킵): ${skippedNoMatch}건`);

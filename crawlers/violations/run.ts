@@ -12,7 +12,7 @@
  */
 import * as cheerio from "cheerio";
 import { fetchText } from "../shared/http";
-import { db, startCrawlRun, finishCrawlRun } from "../shared/db";
+import { db, startCrawlRun, finishCrawlRun, fetchAllRows } from "../shared/db";
 import { bestFacilityMatch } from "../shared/fuzzy";
 
 const LIST_URL = "https://www.mohw.go.kr/claimList.es";
@@ -71,19 +71,21 @@ async function run() {
     const rows = parseRows(html);
     console.log(`[${SOURCE}] 파싱된 행: ${rows.length}건`);
 
-    const { data: facilities, error: facErr } = await db
-      .from("facilities")
-      .select("id, name, address");
-    if (facErr) throw facErr;
+    const facilities = await fetchAllRows<{ id: string; name: string; address: string | null }>(
+      (from, to) => db.from("facilities").select("id, name, address").range(from, to)
+    );
 
     // 게시판은 매번 같은 공고를 다시 보여주므로, 매일 자동 실행 시 중복 적재를
     // 막기 위해 (기관명+처분일+처분유형)이 이미 있는 행은 건너뛴다.
-    const { data: existingRows, error: existErr } = await db
-      .from("violations")
-      .select("org_name_raw, violation_date, violation_type");
-    if (existErr) throw existErr;
+    const existingRows = await fetchAllRows<{
+      org_name_raw: string;
+      violation_date: string | null;
+      violation_type: string | null;
+    }>((from, to) =>
+      db.from("violations").select("org_name_raw, violation_date, violation_type").range(from, to)
+    );
     const existingKeys = new Set(
-      (existingRows ?? []).map((r) => `${r.org_name_raw}|${r.violation_date}|${r.violation_type}`)
+      existingRows.map((r) => `${r.org_name_raw}|${r.violation_date}|${r.violation_type}`)
     );
 
     let matched = 0;
@@ -93,7 +95,7 @@ async function run() {
       const key = `${row.org_name_raw}|${row.violation_date}|${violationType}`;
       if (existingKeys.has(key)) continue;
 
-      const match = bestFacilityMatch(row.org_name_raw, row.address_raw, facilities ?? []);
+      const match = bestFacilityMatch(row.org_name_raw, row.address_raw, facilities);
       const confident = match && match.confidence >= 0.6;
       if (confident) matched++;
 
