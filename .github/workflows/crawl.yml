@@ -1,0 +1,50 @@
+name: 크롤러 자동 실행
+
+# Vercel 서버리스 함수는 실행 시간 제한이 짧아 이 크롤러들(파일 다운로드 +
+# 수만 행 매칭)에 맞지 않는다. GitHub Actions는 잡당 최대 6시간까지 돌 수
+# 있어 배치 크롤링에 더 적합하다.
+on:
+  schedule:
+    - cron: "30 14 * * *" # 매일 23:30 KST(=UTC 14:30)
+  workflow_dispatch: {}
+
+concurrency:
+  group: crawl
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: .env.local 생성 (시크릿 → 크롤러용 env 파일)
+        run: |
+          cat <<EOF > .env.local
+          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATA_GO_KR_SERVICE_KEY=${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+          EOF
+
+      # 소스 하나가 막혀도(robots 변경, 사이트 다운 등) 나머지는 계속 진행.
+      # 실패 여부는 crawl_runs 테이블에 그대로 기록된다.
+      - run: npm run crawl:silvercarekorea
+        continue-on-error: true
+      - run: npm run crawl:datagokr
+        continue-on-error: true
+      - run: npm run crawl:adminsym
+        continue-on-error: true
+      - run: npm run crawl:violations
+        continue-on-error: true
+
+      - name: 리스크 스코어 재계산
+        if: always()
+        run: npm run score:compute
