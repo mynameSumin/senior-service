@@ -93,6 +93,7 @@ export interface ProgramItem {
 }
 
 export interface NonBenefitItem {
+  adminPttnCd?: string; // 등록 당시 기관유형코드
   nonpayKind?: string; // 비급여항목 종류 코드 — NONPAY_KIND_LABELS 참조
   nonpayTgtAmt?: string; // 1일 기준 금액
   prodBase?: string; // 산출근거 (예: "3500*3")
@@ -108,6 +109,40 @@ export const NONPAY_KIND_LABELS: Record<string, string> = {
   "6": "상급침실사용료(2인실)",
   "7": "기타",
 };
+
+// 기관유형코드(adminPttnCd)가 바뀐 적이 있는 시설은 과거 기관유형으로 등록했던
+// 비급여 내역이 새 기관유형 내역과 함께 조회된다(예: G31/G32 → A03 변경).
+// 같은 항목(간식비 등)이 기관유형별로 중복 노출되므로, 가장 최근에 갱신된
+// 기관유형 묶음만 남긴다. 같은 묶음 안의 동일 종류(nonpayKind) 다건은 진짜로
+// 별개 항목일 수 있어(예: 1인실/2인실 상급침실료) 그대로 둔다 — 완전히 같은
+// (종류, 금액, 산출근거) 조합만 중복으로 보고 제거한다.
+function latestNonBenefits(items: NonBenefitItem[]): NonBenefitItem[] {
+  const latestUptDtByGroup = new Map<string, string>();
+  for (const item of items) {
+    const key = item.adminPttnCd ?? "";
+    const current = latestUptDtByGroup.get(key) ?? "";
+    if ((item.uptDt ?? "") > current) latestUptDtByGroup.set(key, item.uptDt ?? "");
+  }
+  let bestGroup = "";
+  let bestUptDt = "";
+  for (const [key, uptDt] of latestUptDtByGroup) {
+    if (uptDt > bestUptDt) {
+      bestUptDt = uptDt;
+      bestGroup = key;
+    }
+  }
+
+  const seen = new Set<string>();
+  const result: NonBenefitItem[] = [];
+  for (const item of items) {
+    if ((item.adminPttnCd ?? "") !== bestGroup) continue;
+    const dedupeKey = `${item.nonpayKind}|${item.nonpayTgtAmt}|${item.prodBase}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    result.push(item);
+  }
+  return result;
+}
 
 export interface FacilityLiveDetail {
   staff: StaffStatus | null;
@@ -153,11 +188,12 @@ export async function fetchFacilityLiveDetail(
   ]);
 
   const programs = programsRaw ? (Array.isArray(programsRaw) ? programsRaw : [programsRaw]) : null;
-  const nonBenefits = nonBenefitsRaw
+  const nonBenefitsList = nonBenefitsRaw
     ? Array.isArray(nonBenefitsRaw)
       ? nonBenefitsRaw
       : [nonBenefitsRaw]
     : null;
+  const nonBenefits = nonBenefitsList ? latestNonBenefits(nonBenefitsList) : null;
 
   return { staff, acceptance, rooms, programs, nonBenefits };
 }

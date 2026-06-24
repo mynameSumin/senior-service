@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -38,7 +39,10 @@ export default function MatchPage() {
 
   return (
     <main className="mx-auto flex max-w-xl flex-1 flex-col px-6 py-16">
-      <h1 className="text-2xl font-bold text-zinc-900">
+      <Link href="/" className="text-sm text-zinc-500 hover:text-purple-700 hover:underline">
+        ← 처음으로
+      </Link>
+      <h1 className="mt-3 text-2xl font-bold text-zinc-900">
         어르신 상태를 알려주세요
       </h1>
       <p className="mt-2 text-sm text-zinc-500">
