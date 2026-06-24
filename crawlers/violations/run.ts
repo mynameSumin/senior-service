@@ -76,8 +76,23 @@ async function run() {
       .select("id, name, address");
     if (facErr) throw facErr;
 
+    // 게시판은 매번 같은 공고를 다시 보여주므로, 매일 자동 실행 시 중복 적재를
+    // 막기 위해 (기관명+처분일+처분유형)이 이미 있는 행은 건너뛴다.
+    const { data: existingRows, error: existErr } = await db
+      .from("violations")
+      .select("org_name_raw, violation_date, violation_type");
+    if (existErr) throw existErr;
+    const existingKeys = new Set(
+      (existingRows ?? []).map((r) => `${r.org_name_raw}|${r.violation_date}|${r.violation_type}`)
+    );
+
     let matched = 0;
+    let inserted = 0;
     for (const row of rows) {
+      const violationType = `[${row.org_type}] ${row.violation_type}`;
+      const key = `${row.org_name_raw}|${row.violation_date}|${violationType}`;
+      if (existingKeys.has(key)) continue;
+
       const match = bestFacilityMatch(row.org_name_raw, row.address_raw, facilities ?? []);
       const confident = match && match.confidence >= 0.6;
       if (confident) matched++;
@@ -86,17 +101,19 @@ async function run() {
         facility_id: confident ? match!.id : null,
         org_name_raw: row.org_name_raw,
         address_raw: row.address_raw,
-        violation_type: `[${row.org_type}] ${row.violation_type}`,
+        violation_type: violationType,
         violation_date: row.violation_date,
         penalty: row.penalty,
         source_url: row.source_url,
         match_confidence: match?.confidence ?? null,
       });
       if (error) throw error;
+      existingKeys.add(key);
+      inserted++;
     }
 
-    console.log(`[${SOURCE}] facilities 매칭: ${matched}/${rows.length}건 (confidence>=0.6)`);
-    await finishCrawlRun(runId, rows.length > 0 ? "success" : "partial", rows.length);
+    console.log(`[${SOURCE}] 신규 적재: ${inserted}/${rows.length}건, facilities 매칭: ${matched}건 (confidence>=0.6)`);
+    await finishCrawlRun(runId, rows.length > 0 ? "success" : "partial", inserted);
   } catch (err) {
     console.error(`[${SOURCE}] 실패:`, err);
     await finishCrawlRun(runId, "failed", 0, String(err));
