@@ -21,7 +21,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22 # Node 20엔 전역 WebSocket이 없어 @supabase/supabase-js 초기화가 실패한다
           cache: npm
 
       - run: npm ci
