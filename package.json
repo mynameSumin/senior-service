@@ -1,0 +1,44 @@
+{
+  "name": "senior-service",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint",
+    "crawl:violations": "tsx --env-file=.env.local crawlers/violations/run.ts",
+    "crawl:silvercarekorea": "tsx --env-file=.env.local crawlers/silvercarekorea/run.ts",
+    "crawl:datagokr": "tsx --env-file=.env.local crawlers/data-go-kr/run.ts",
+    "crawl:adminsym": "tsx --env-file=.env.local crawlers/data-go-kr/match-admin-sym.ts",
+    "score:compute": "tsx --env-file=.env.local scripts/compute-risk-scores.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
+    "axios": "^1.18.1",
+    "cheerio": "^1.2.0",
+    "csv-parse": "^7.0.0",
+    "iconv-lite": "^0.7.2",
+    "next": "16.2.9",
+    "pdf-parse": "^2.4.5",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "string-similarity": "^4.0.4",
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/string-similarity": "^4.0.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "playwright": "^1.61.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.22.4",
+    "typescript": "^5"
+  }
+}
