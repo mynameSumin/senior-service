@@ -2,6 +2,8 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { matchFacilityType, type Cognition, type MedicalNeed, type Mobility } from "@/lib/matching";
 import FacilityCard from "@/components/FacilityCard";
+import FeeGuide from "@/components/FeeGuide";
+import RiskScoreInfo from "@/components/RiskScoreInfo";
 
 interface SearchParams {
   mobility?: string;
@@ -55,6 +57,11 @@ export default async function ResultsPage({
       </Link>
       <h1 className="mt-3 text-2xl font-bold text-zinc-900">추천 시설 유형: {match.recommendedTypes.join(", ")}</h1>
       <p className="mt-2 text-sm text-zinc-600">{match.reason}</p>
+      <div className="mt-3">
+        <RiskScoreInfo />
+      </div>
+
+      {match.recommendedTypes.includes("요양원") && <FeeGuide />}
 
       {error && (
         <p className="mt-6 text-sm text-red-600">
