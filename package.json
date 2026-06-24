@@ -9,6 +9,7 @@
     "lint": "eslint",
     "crawl:violations": "tsx --env-file=.env.local crawlers/violations/run.ts",
     "crawl:silvercarekorea": "tsx --env-file=.env.local crawlers/silvercarekorea/run.ts",
+    "crawl:seedfacilities": "tsx --env-file=.env.local crawlers/data-go-kr/seed-facilities.ts",
     "crawl:datagokr": "tsx --env-file=.env.local crawlers/data-go-kr/run.ts",
     "crawl:adminsym": "tsx --env-file=.env.local crawlers/data-go-kr/match-admin-sym.ts",
     "score:compute": "tsx --env-file=.env.local scripts/compute-risk-scores.ts"

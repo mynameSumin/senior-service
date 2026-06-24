@@ -38,6 +38,8 @@ jobs:
       # 실패 여부는 crawl_runs 테이블에 그대로 기록된다.
       - run: npm run crawl:silvercarekorea
         continue-on-error: true
+      - run: npm run crawl:seedfacilities
+        continue-on-error: true
       - run: npm run crawl:datagokr
         continue-on-error: true
       - run: npm run crawl:adminsym

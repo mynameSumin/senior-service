@@ -12,27 +12,11 @@
  * 인력현황 합계(직원 수 총합)가 더 큰 코드를 우선한다 — 데이터가 빈 코드보다 채워진 코드를 신뢰.
  */
 import XLSX from "xlsx";
-import { fetchJson } from "../shared/http";
-import { db, startCrawlRun, finishCrawlRun } from "../shared/db";
+import { db, startCrawlRun, finishCrawlRun, fetchAllRows } from "../shared/db";
 import { bestFacilityMatch } from "../shared/fuzzy";
+import { downloadFacilityStatusWorkbook, computeStaffRichnessByCode } from "./facilityStatusFile";
 
 const SOURCE = "datagokr:admin_sym_match";
-const FACILITY_STATUS_PUBLIC_DATA_PK = "15124763";
-
-async function downloadWorkbook(): Promise<XLSX.WorkBook> {
-  const info = await fetchJson<{ atchFileId: string; fileDetailSn: string; status: boolean }>(
-    "https://www.data.go.kr/tcs/dss/selectFileDataDownload.do",
-    { publicDataPk: FACILITY_STATUS_PUBLIC_DATA_PK }
-  );
-  if (!info.status) throw new Error("시설별 현황 파일 다운로드 정보 조회 실패");
-
-  const res = await fetch(
-    `https://www.data.go.kr/cmm/cmm/fileDownload.do?atchFileId=${info.atchFileId}&fileDetailSn=${info.fileDetailSn}&dataNm=facility_status`,
-    { headers: { "User-Agent": "Mozilla/5.0" } }
-  );
-  const buf = Buffer.from(await res.arrayBuffer());
-  return XLSX.read(buf, { type: "buffer" });
-}
 
 interface Candidate {
   code: string;
@@ -46,7 +30,7 @@ async function run() {
   let skipped = 0;
 
   try {
-    const wb = await downloadWorkbook();
+    const wb = await downloadFacilityStatusWorkbook();
 
     const generalRows = XLSX.utils.sheet_to_json<{
       장기요양기관코드: string;
@@ -72,24 +56,22 @@ async function run() {
     }
 
     // 데이터가 더 "차있는" 코드를 우선하기 위한 인력 총합(직종 무관, 숫자 컬럼 전부 합산)
-    const richnessByCode = new Map<string, number>();
-    for (const row of staffRows) {
-      const code = String(row["장기요양기관코드"]);
-      let sum = 0;
-      for (const [key, value] of Object.entries(row)) {
-        if (key === "장기요양기관코드" || key === "기관유형코드" || key === "기관유형코드명") continue;
-        const n = Number(value);
-        if (!isNaN(n)) sum += n;
-      }
-      richnessByCode.set(code, (richnessByCode.get(code) ?? 0) + sum);
-    }
+    const richnessByCode = computeStaffRichnessByCode(staffRows);
 
     console.log(
       `[${SOURCE}] 일반현황 ${generalRows.length}행, 입소인원 ${capacityRows.length}행, 인력현황 ${staffRows.length}행`
     );
 
-    const { data: facilities } = await db.from("facilities").select("id, name, address");
-    const facilityPool = facilities ?? [];
+    // seed-facilities.ts가 이미 원본 데이터에서 직접 코드를 채운 시설은 다시 fuzzy
+    // 매칭하지 않는다 — 후보 풀이 커질수록 동명 시설 간 오매칭 위험이 커지기 때문.
+    const facilityPool = await fetchAllRows<{ id: string; name: string; address: string | null }>(
+      (from, to) =>
+        db
+          .from("facilities")
+          .select("id, name, address")
+          .is("long_term_admin_sym", null)
+          .range(from, to)
+    );
 
     const bestForFacility = new Map<string, Candidate>();
 
