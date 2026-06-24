@@ -92,18 +92,36 @@ export interface ProgramItem {
   tgtNop?: string;
 }
 
+export interface NonBenefitItem {
+  nonpayKind?: string; // 비급여항목 종류 코드 — NONPAY_KIND_LABELS 참조
+  nonpayTgtAmt?: string; // 1일 기준 금액
+  prodBase?: string; // 산출근거 (예: "3500*3")
+  uptDt?: string; // 등록일 YYYYMMDD
+}
+
+export const NONPAY_KIND_LABELS: Record<string, string> = {
+  "1": "식재료비",
+  "2": "상급침실사용료",
+  "3": "이미용비",
+  "4": "경관영양유동식비",
+  "5": "간식비",
+  "6": "상급침실사용료(2인실)",
+  "7": "기타",
+};
+
 export interface FacilityLiveDetail {
   staff: StaffStatus | null;
   acceptance: AcceptanceStatus | null;
   rooms: FacilityRoomStatus | null;
   programs: ProgramItem[] | null;
+  nonBenefits: NonBenefitItem[] | null;
 }
 
 export async function fetchFacilityLiveDetail(
   longTermAdminSym: string,
   adminPttnCd: string | null
 ): Promise<FacilityLiveDetail> {
-  const [staff, acceptance, rooms, programsRaw] = await Promise.all([
+  const [staff, acceptance, rooms, programsRaw, nonBenefitsRaw] = await Promise.all([
     adminPttnCd
       ? callOperation<StaffStatus>("getStaffSttusDetailInfoItem02", {
           longTermAdminSym,
@@ -127,9 +145,19 @@ export async function fetchFacilityLiveDetail(
       pageNo: "1",
       numOfRows: "10",
     }),
+    callOperation<NonBenefitItem | NonBenefitItem[]>("getNonBenefitSttusDetailInfoList02", {
+      longTermAdminSym,
+      pageNo: "1",
+      numOfRows: "20",
+    }),
   ]);
 
   const programs = programsRaw ? (Array.isArray(programsRaw) ? programsRaw : [programsRaw]) : null;
+  const nonBenefits = nonBenefitsRaw
+    ? Array.isArray(nonBenefitsRaw)
+      ? nonBenefitsRaw
+      : [nonBenefitsRaw]
+    : null;
 
-  return { staff, acceptance, rooms, programs };
+  return { staff, acceptance, rooms, programs, nonBenefits };
 }

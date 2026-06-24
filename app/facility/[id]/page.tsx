@@ -3,6 +3,8 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import RiskBadge from "@/components/RiskBadge";
 import StaffStatusGrid from "@/components/StaffStatusGrid";
+import ProgramGrid from "@/components/ProgramGrid";
+import NonBenefitGrid from "@/components/NonBenefitGrid";
 import { fetchFacilityLiveDetail } from "@/lib/dataGoKrDetail";
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -110,6 +112,21 @@ export default async function FacilityDetailPage({
         </section>
       )}
 
+      {liveDetail?.nonBenefits && liveDetail.nonBenefits.length > 0 && (
+        <section className="mt-6">
+          <h2 className="text-sm font-semibold text-zinc-800">
+            비급여 비용 <span className="text-xs font-normal text-zinc-400">(공공데이터 실시간 조회)</span>
+          </h2>
+          <p className="mt-1 text-xs text-zinc-400">
+            급여(보험 적용) 비용은 등급에 따라 전국 동일하지만, 아래 항목은 시설마다 다르게 책정하는
+            비급여(실비) 비용입니다.
+          </p>
+          <div className="mt-2">
+            <NonBenefitGrid items={liveDetail.nonBenefits} />
+          </div>
+        </section>
+      )}
+
       {liveDetail?.staff && (
         <section className="mt-6">
           <h2 className="text-sm font-semibold text-zinc-800">
@@ -126,13 +143,9 @@ export default async function FacilityDetailPage({
           <h2 className="text-sm font-semibold text-zinc-800">
             운영 프로그램 <span className="text-xs font-normal text-zinc-400">(공공데이터 실시간 조회)</span>
           </h2>
-          <ul className="mt-2 flex flex-col gap-1 text-sm text-zinc-600">
-            {liveDetail.programs.map((p, i) => (
-              <li key={i}>
-                {p.pgmNm} {p.runPlc ? `· ${p.runPlc}` : ""} {p.cyclTm ? `· 주기 ${p.cyclTm}` : ""}
-              </li>
-            ))}
-          </ul>
+          <div className="mt-2">
+            <ProgramGrid programs={liveDetail.programs} />
+          </div>
         </section>
       )}
 
