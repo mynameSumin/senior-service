@@ -17,6 +17,10 @@
  *
  * 17,131건을 정중한 속도(요청당 300ms)로 순차 처리하면 ~1.5시간이라 5개 동시처리로
  * ~17~20분으로 줄였다(레인당 간격은 그대로 유지해 서버 부담을 5배 이내로 제한).
+ *
+ * 매일 도는 자동화에서 재실행할 때마다 "이미 없다고 확인된" 시설까지 매번 또
+ * 요청을 보내는 낭비가 있었다 — 못 찾은 시설에는 external_urls.caredocCheckedAt에
+ * 확인 시각을 남겨, 다음부터는 신규 시설(이 마커가 없는 행)만 대상으로 한다.
  */
 import axios from "axios";
 import { UA } from "../shared/http";
@@ -54,7 +58,8 @@ async function pageExists(url: string): Promise<boolean> {
 async function runLane(
   queue: FacilityRow[],
   onChecked: () => void,
-  onHit: (f: FacilityRow, url: string) => void
+  onHit: (f: FacilityRow, url: string) => void,
+  onMiss: (f: FacilityRow) => void
 ) {
   let lastCall = 0;
   for (const f of queue) {
@@ -64,6 +69,7 @@ async function runLane(
 
     const url = buildCandidateUrl(f);
     if (await pageExists(url)) onHit(f, url);
+    else onMiss(f);
     onChecked();
   }
 }
@@ -81,6 +87,7 @@ async function run() {
         .in("type", ["요양원", "주야간보호", "방문요양"])
         .not("long_term_admin_sym", "is", null)
         .eq("external_urls->>datagokr", FACILITY_STATUS_DATASET_URL)
+        .is("external_urls->>caredocCheckedAt", null)
         .order("id").range(from, to)
     );
     console.log(`[${SOURCE}] 확인 대상 ${targets.length}곳, 동시처리 ${CONCURRENCY}개`);
@@ -89,17 +96,38 @@ async function run() {
     targets.forEach((f, i) => lanes[i % CONCURRENCY].push(f));
 
     const hitBuffer: { id: string; url: string }[] = [];
+    const missBuffer: { id: string }[] = [];
     const flushHits = async () => {
-      if (hitBuffer.length === 0) return;
-      const chunk = hitBuffer.splice(0, hitBuffer.length);
-      await Promise.all(
-        chunk.map(({ id, url }) => db.from("facilities").update({ external_urls: { caredoc: url } }).eq("id", id))
-      );
+      if (hitBuffer.length > 0) {
+        const chunk = hitBuffer.splice(0, hitBuffer.length);
+        await Promise.all(
+          chunk.map(({ id, url }) => db.from("facilities").update({ external_urls: { caredoc: url } }).eq("id", id))
+        );
+      }
+      if (missBuffer.length > 0) {
+        const chunk = missBuffer.splice(0, missBuffer.length);
+        await Promise.all(
+          chunk.map(({ id }) =>
+            db
+              .from("facilities")
+              .update({
+                external_urls: {
+                  datagokr: FACILITY_STATUS_DATASET_URL,
+                  caredocCheckedAt: new Date().toISOString(),
+                },
+              })
+              .eq("id", id)
+          )
+        );
+      }
     };
 
     const onHit = (f: FacilityRow, url: string) => {
       hits++;
       hitBuffer.push({ id: f.id, url });
+    };
+    const onMiss = (f: FacilityRow) => {
+      missBuffer.push({ id: f.id });
     };
     const onChecked = () => {
       checked++;
@@ -110,7 +138,7 @@ async function run() {
       void flushHits();
     }, 30000);
 
-    await Promise.all(lanes.map((lane) => runLane(lane, onChecked, onHit)));
+    await Promise.all(lanes.map((lane) => runLane(lane, onChecked, onHit, onMiss)));
     clearInterval(progressTick);
     await flushHits();
 
