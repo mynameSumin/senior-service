@@ -5,7 +5,9 @@ import RiskBadge from "@/components/RiskBadge";
 import StaffStatusGrid from "@/components/StaffStatusGrid";
 import ProgramGrid from "@/components/ProgramGrid";
 import NonBenefitGrid from "@/components/NonBenefitGrid";
+import HiraNonPaymentList from "@/components/HiraNonPaymentList";
 import { fetchFacilityLiveDetail } from "@/lib/dataGoKrDetail";
+import { fetchHiraNonPaymentItems } from "@/lib/hiraNonPayment";
 
 const SOURCE_LABEL: Record<string, string> = {
   silvercarekorea: "실버케어코리아",
@@ -41,6 +43,13 @@ export default async function FacilityDetailPage({
   const liveDetail = facility.long_term_admin_sym
     ? await fetchFacilityLiveDetail(facility.long_term_admin_sym, facility.admin_pttn_cd)
     : null;
+
+  // 요양병원은 장기요양보험 영역 밖이라 위 API에 없다 — 평가등급 적재 시 같이 저장해둔
+  // ykiho(심평원 기관코드)로 별도 비급여 비용 API를 부른다.
+  const hiraYkiho = evaluations?.find((e) => e.source === "심평원")?.raw?.ykiho as
+    | string
+    | undefined;
+  const hiraNonPayments = hiraYkiho ? await fetchHiraNonPaymentItems(hiraYkiho) : null;
 
   return (
     <main className="mx-auto flex max-w-3xl flex-1 flex-col px-6 py-12">
@@ -123,6 +132,21 @@ export default async function FacilityDetailPage({
           </p>
           <div className="mt-2">
             <NonBenefitGrid items={liveDetail.nonBenefits} />
+          </div>
+        </section>
+      )}
+
+      {hiraNonPayments && hiraNonPayments.length > 0 && (
+        <section className="mt-6">
+          <h2 className="text-sm font-semibold text-zinc-800">
+            비급여 비용 <span className="text-xs font-normal text-zinc-400">(공공데이터 실시간 조회)</span>
+          </h2>
+          <p className="mt-1 text-xs text-zinc-400">
+            건강보험심사평가원에 등재된 항목별 비급여(실비) 비용입니다. 시설마다 항목·가격이
+            다릅니다.
+          </p>
+          <div className="mt-2">
+            <HiraNonPaymentList items={hiraNonPayments} />
           </div>
         </section>
       )}

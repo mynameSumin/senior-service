@@ -1,5 +1,6 @@
 // 국민건강보험공단_장기요양기관 시설별 상세조회 서비스 (실시간 호출, 서버 컴포넌트 전용)
 // 서비스키는 NEXT_PUBLIC_ 접두사가 없으므로 클라이언트로 노출되지 않는다.
+import { parseXmlItems } from "./xml";
 
 const BASE = "http://apis.data.go.kr/B550928/getLtcInsttDetailInfoService02";
 
@@ -25,23 +26,6 @@ async function callOperation<T>(
   } catch {
     return null;
   }
-}
-
-// 의존성 추가 없이 단순 XML(이 API는 평탄한 구조만 반환) → 객체 변환
-function parseXmlItems<T>(xml: string): T | null {
-  const itemBlocks = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
-  if (itemBlocks.length === 0) return null;
-
-  const parseFields = (block: string) => {
-    const obj: Record<string, string> = {};
-    for (const m of block.matchAll(/<(\w+)>([^<]*)<\/\1>/g)) {
-      obj[m[1]] = m[2];
-    }
-    return obj;
-  };
-
-  const items = itemBlocks.map((m) => parseFields(m[1]));
-  return (items.length === 1 ? items[0] : items) as T;
 }
 
 export interface StaffStatus {
