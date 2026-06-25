@@ -44,6 +44,8 @@ jobs:
         continue-on-error: true
       - run: npm run crawl:adminsym
         continue-on-error: true
+      - run: npm run crawl:hira
+        continue-on-error: true
       - run: npm run crawl:violations
         continue-on-error: true
 

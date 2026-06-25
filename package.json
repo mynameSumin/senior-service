@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "crawl:violations": "tsx --env-file=.env.local crawlers/violations/run.ts",
+    "crawl:hira": "tsx --env-file=.env.local crawlers/hira/run.ts",
     "crawl:silvercarekorea": "tsx --env-file=.env.local crawlers/silvercarekorea/run.ts",
     "crawl:seedfacilities": "tsx --env-file=.env.local crawlers/data-go-kr/seed-facilities.ts",
     "crawl:datagokr": "tsx --env-file=.env.local crawlers/data-go-kr/run.ts",
