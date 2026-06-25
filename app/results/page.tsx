@@ -69,7 +69,15 @@ export default async function ResultsPage({
         </p>
       )}
 
-      {!error && ranked.length === 0 && (
+      {!error && ranked.length === 0 && match.recommendedTypes.includes("요양병원") && (
+        <p className="mt-10 text-sm text-zinc-500">
+          요양병원 평가 정보를 제공하는 심사평가원 사이트가 자동 수집을 막아둬 아직 요양병원
+          데이터를 다루지 못하고 있습니다. 지역을 넓혀도 결과가 늘지 않는 건 이 때문입니다 —
+          준비되면 가장 먼저 채울 예정입니다.
+        </p>
+      )}
+
+      {!error && ranked.length === 0 && !match.recommendedTypes.includes("요양병원") && (
         <p className="mt-10 text-sm text-zinc-500">
           조건에 맞는 시설을 아직 찾지 못했습니다. 지역을 &ldquo;전국&rdquo;으로 넓혀보세요.
         </p>
