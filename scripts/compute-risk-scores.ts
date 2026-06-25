@@ -11,7 +11,7 @@ async function run() {
   // 시설마다 매번 evaluations/violations를 조회하면(N+1) 수만 건 규모에서 너무 느려진다 —
   // 전체를 한 번씩만 가져와 facility_id로 그룹핑한다.
   const facilities = await fetchAllRows<{ id: string }>((from, to) =>
-    db.from("facilities").select("id").range(from, to)
+    db.from("facilities").select("id").order("id").range(from, to)
   );
   const evaluations = await fetchAllRows<{
     facility_id: string;
@@ -19,7 +19,7 @@ async function run() {
     grade: string;
     domain_scores: Record<string, number> | null;
   }>((from, to) =>
-    db.from("evaluations").select("facility_id, eval_year, grade, domain_scores").range(from, to)
+    db.from("evaluations").select("facility_id, eval_year, grade, domain_scores").order("id").range(from, to)
   );
   const violations = await fetchAllRows<{
     facility_id: string | null;
@@ -30,7 +30,7 @@ async function run() {
     db
       .from("violations")
       .select("facility_id, violation_type, penalty, match_confidence")
-      .range(from, to)
+      .order("id").range(from, to)
   );
 
   const evaluationsByFacility = new Map<string, typeof evaluations>();

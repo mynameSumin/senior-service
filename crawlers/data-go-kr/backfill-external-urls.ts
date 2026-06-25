@@ -16,7 +16,7 @@ async function main() {
         .from("facilities")
         .select("id, external_urls")
         .in("type", ["요양원", "주야간보호", "방문요양"])
-        .range(from, to)
+        .order("id").range(from, to)
   );
   const ltcToFix = ltcFacilities.filter((f) => Object.keys(f.external_urls ?? {}).length === 0);
   for (let i = 0; i < ltcToFix.length; i += 500) {
@@ -33,10 +33,10 @@ async function main() {
   }
 
   const hospEvals = await fetchAllRows<{ facility_id: string; raw: { ykiho?: string } }>(
-    (from, to) => db.from("evaluations").select("facility_id, raw").eq("source", "심평원").range(from, to)
+    (from, to) => db.from("evaluations").select("facility_id, raw").eq("source", "심평원").order("id").range(from, to)
   );
   const hospFacilities = await fetchAllRows<{ id: string; external_urls: Record<string, string> }>(
-    (from, to) => db.from("facilities").select("id, external_urls").eq("type", "요양병원").range(from, to)
+    (from, to) => db.from("facilities").select("id, external_urls").eq("type", "요양병원").order("id").range(from, to)
   );
   const emptyHospIds = new Set(
     hospFacilities.filter((f) => Object.keys(f.external_urls ?? {}).length === 0).map((f) => f.id)

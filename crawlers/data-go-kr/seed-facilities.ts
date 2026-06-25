@@ -131,7 +131,7 @@ async function run() {
     console.log(`[${SOURCE}] 타겟 유형(요양원/주야간보호/방문요양) 중복제거 후 ${bestByKey.size}곳`);
 
     const existingPool = await fetchAllRows<{ id: string; name: string; address: string | null }>(
-      (from, to) => db.from("facilities").select("id, name, address").range(from, to)
+      (from, to) => db.from("facilities").select("id, name, address").order("id").range(from, to)
     );
 
     const toInsert: Record<string, unknown>[] = [];

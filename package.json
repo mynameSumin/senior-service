@@ -13,6 +13,7 @@
     "crawl:seedfacilities": "tsx --env-file=.env.local crawlers/data-go-kr/seed-facilities.ts",
     "crawl:datagokr": "tsx --env-file=.env.local crawlers/data-go-kr/run.ts",
     "crawl:adminsym": "tsx --env-file=.env.local crawlers/data-go-kr/match-admin-sym.ts",
+    "crawl:caredoc": "tsx --env-file=.env.local crawlers/caredoc/run.ts",
     "score:compute": "tsx --env-file=.env.local scripts/compute-risk-scores.ts"
   },
   "dependencies": {

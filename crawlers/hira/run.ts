@@ -104,7 +104,7 @@ async function run() {
     // 재실행 시 중복 생성만 막기 위해, 매칭 대상 풀을 기존 type="요양병원" 시설로만 제한한다.
     const existingPool = await fetchAllRows<{ id: string; name: string; address: string | null }>(
       (from, to) =>
-        db.from("facilities").select("id, name, address").eq("type", "요양병원").range(from, to)
+        db.from("facilities").select("id, name, address").eq("type", "요양병원").order("id").range(from, to)
     );
 
     const evalYear = new Date().getFullYear();

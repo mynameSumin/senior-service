@@ -72,7 +72,7 @@ async function run() {
     console.log(`[${SOURCE}] 파싱된 행: ${rows.length}건`);
 
     const facilities = await fetchAllRows<{ id: string; name: string; address: string | null }>(
-      (from, to) => db.from("facilities").select("id, name, address").range(from, to)
+      (from, to) => db.from("facilities").select("id, name, address").order("id").range(from, to)
     );
 
     // 게시판은 매번 같은 공고를 다시 보여주므로, 매일 자동 실행 시 중복 적재를
@@ -82,7 +82,7 @@ async function run() {
       violation_date: string | null;
       violation_type: string | null;
     }>((from, to) =>
-      db.from("violations").select("org_name_raw, violation_date, violation_type").range(from, to)
+      db.from("violations").select("org_name_raw, violation_date, violation_type").order("id").range(from, to)
     );
     const existingKeys = new Set(
       existingRows.map((r) => `${r.org_name_raw}|${r.violation_date}|${r.violation_type}`)

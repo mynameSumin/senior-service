@@ -70,7 +70,7 @@ async function run() {
           .from("facilities")
           .select("id, name, address")
           .is("long_term_admin_sym", null)
-          .range(from, to)
+          .order("id").range(from, to)
     );
 
     const bestForFacility = new Map<string, Candidate>();

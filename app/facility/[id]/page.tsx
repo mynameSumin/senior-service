@@ -13,6 +13,7 @@ const SOURCE_LABEL: Record<string, string> = {
   silvercarekorea: "실버케어코리아",
   datagokr: "공공데이터포털(data.go.kr)",
   hira: "건강보험심사평가원",
+  caredoc: "케어닥",
 };
 
 export default async function FacilityDetailPage({

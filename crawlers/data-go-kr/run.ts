@@ -86,7 +86,7 @@ async function run() {
     console.log(`[${SOURCE}] CSV 파싱 완료: ${rows.length - 1}행`);
 
     const facilityPool = await fetchAllRows<{ id: string; name: string; address: string | null }>(
-      (from, to) => db.from("facilities").select("id, name, address").range(from, to)
+      (from, to) => db.from("facilities").select("id, name, address").order("id").range(from, to)
     );
     const nameIndex = buildNameIndex(facilityPool);
 
