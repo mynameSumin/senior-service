@@ -98,13 +98,14 @@ export default async function ResultsPage({
   else reviewToggleParams.set("hasReviews", "1");
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-1 flex-col px-6 py-12">
-      <Link
-        href="/match"
-        className="text-sm text-zinc-500 hover:text-purple-700 hover:underline"
-      >
-        ← 조건 다시 입력
-      </Link>
+    <div className="min-h-full w-full flex-1 bg-purple-100">
+      <main className="mx-auto flex max-w-3xl flex-1 flex-col bg-white px-6 py-12 shadow-sm">
+        <Link
+          href="/match"
+          className="text-sm text-zinc-500 hover:text-purple-700 hover:underline"
+        >
+          ← 조건 다시 입력
+        </Link>
       <h1 className="mt-3 text-2xl font-bold text-zinc-900">
         추천 시설 유형: {match.recommendedTypes.join(", ")}
       </h1>
@@ -252,6 +253,7 @@ export default async function ResultsPage({
           </Link>
         </nav>
       )}
-    </main>
+      </main>
+    </div>
   );
 }

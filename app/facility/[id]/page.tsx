@@ -55,7 +55,8 @@ export default async function FacilityDetailPage({
   const hiraNonPayments = hiraYkiho ? await fetchHiraNonPaymentItems(hiraYkiho) : null;
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-1 flex-col px-6 py-12">
+    <div className="min-h-full w-full flex-1 bg-purple-100">
+      <main className="mx-auto flex max-w-3xl flex-1 flex-col bg-white px-6 py-12 shadow-sm">
       <Link href="/results" className="text-sm text-zinc-500 hover:text-purple-700 hover:underline">
         ← 목록으로
       </Link>
@@ -236,6 +237,7 @@ export default async function FacilityDetailPage({
           ))}
         </section>
       )}
-    </main>
+      </main>
+    </div>
   );
 }
