@@ -54,6 +54,12 @@ export default async function FacilityDetailPage({
     | undefined;
   const hiraNonPayments = hiraYkiho ? await fetchHiraNonPaymentItems(hiraYkiho) : null;
 
+  // external_urls에는 caredocCheckedAt처럼 URL이 아닌 내부용 마커도 같이 들어있어
+  // 실제 http(s) 링크만 걸러서 "원본 페이지 보기" 버튼으로 보여준다.
+  const externalLinks = Object.entries(
+    (facility.external_urls ?? {}) as Record<string, string>
+  ).filter(([, url]) => /^https?:\/\//.test(url));
+
   return (
     <div className="min-h-full w-full flex-1 bg-purple-100">
       <main className="mx-auto flex max-w-3xl flex-1 flex-col bg-white px-6 py-12 shadow-sm">
@@ -222,9 +228,9 @@ export default async function FacilityDetailPage({
         )}
       </section>
 
-      {Object.keys(facility.external_urls ?? {}).length > 0 && (
+      {externalLinks.length > 0 && (
         <section className="mt-8 flex flex-wrap gap-2">
-          {Object.entries(facility.external_urls as Record<string, string>).map(([src, url]) => (
+          {externalLinks.map(([src, url]) => (
             <a
               key={src}
               href={url}
