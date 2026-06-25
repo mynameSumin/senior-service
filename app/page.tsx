@@ -1,9 +1,10 @@
 import Link from "next/link";
 import GlowBackground from "@/components/GlowBackground";
+import WhyCareGuard from "@/components/WhyCareGuard";
 
 export default function Home() {
   return (
-    <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-6 py-24 text-center">
+    <main className="relative flex flex-1 flex-col items-center px-6 py-24 text-center">
       <GlowBackground />
       <h1 className="max-w-2xl text-3xl font-bold leading-tight text-zinc-900 sm:text-4xl">
         가격은 이미 투명합니다.
@@ -27,6 +28,8 @@ export default function Home() {
         평가등급·행정처분 등은 공공데이터, 후기는 민간 플랫폼을 집계해
         보여드립니다.
       </p>
+
+      <WhyCareGuard />
     </main>
   );
 }
