@@ -5,12 +5,15 @@ import FacilityCard from "@/components/FacilityCard";
 import FeeGuide from "@/components/FeeGuide";
 import RiskScoreInfo from "@/components/RiskScoreInfo";
 
+const PAGE_SIZE = 10;
+
 interface SearchParams {
   mobility?: string;
   cognition?: string;
   medicalNeed?: string;
   region?: string;
   hasReviews?: string;
+  page?: string;
 }
 
 export default async function ResultsPage({
@@ -24,45 +27,61 @@ export default async function ResultsPage({
   const medicalNeed = (sp.medicalNeed ?? "low") as MedicalNeed;
   const region = sp.region;
   const hasReviewsOnly = sp.hasReviews === "1";
+  const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
   const match = matchFacilityType({ mobility, cognition, medicalNeed, region });
 
-  // hasReviews=1일 때만 reviews를 !inner로 묶어 후기가 1건도 없는 시설은 DB 단계에서 제외한다.
-  // (먼저 60건으로 잘라낸 뒤 후기 유무로 거르면 대부분 0건처럼 보이는 문제를 피하기 위함)
+  // 정렬 기준(위험도 점수)이 facilities가 아니라 risk_scores 쪽에 있어서, risk_scores를
+  // 기준 테이블로 두고 facilities를 !inner로 묶어야 DB 단계에서 정확히 정렬 + 페이지네이션된다
+  // (반대로 facilities에서 risk_scores를 embed해 정렬하면 PostgREST가 부모 행이 아니라
+  // 묶인 배열 내부만 정렬해서 전혀 의도대로 동작하지 않았다).
+  // hasReviews=1일 때만 reviews도 !inner로 묶어 후기가 1건도 없는 시설은 DB 단계에서 제외한다.
   const reviewsField = hasReviewsOnly ? "reviews!inner(id)" : "reviews(id)";
   let query = supabase
-    .from("facilities")
+    .from("risk_scores")
     .select(
-      `id, name, type, address, region_sido, capacity_total, capacity_current, evaluations(eval_year, grade), risk_scores(score), ${reviewsField}`
+      `score, facilities!inner(id, name, type, address, region_sido, capacity_total, capacity_current, evaluations(eval_year, grade), ${reviewsField})`,
+      { count: "exact" }
     )
-    .in("type", match.recommendedTypes)
-    .limit(60);
+    .in("facilities.type", match.recommendedTypes)
+    .order("score", { ascending: true })
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
-  if (region) query = query.eq("region_sido", region);
+  if (region) query = query.eq("facilities.region_sido", region);
 
-  const { data: facilities, error } = await query;
+  const { data: rows, error, count } = await query;
 
-  const ranked = (facilities ?? [])
-    .map((f) => {
-      const evals = Array.isArray(f.evaluations) ? f.evaluations : [];
-      const latest = [...evals].sort((a, b) => b.eval_year - a.eval_year)[0];
-      const riskRow = Array.isArray(f.risk_scores) ? f.risk_scores[0] : f.risk_scores;
-      const reviewCount = Array.isArray(f.reviews) ? f.reviews.length : 0;
-      return {
-        ...f,
-        latestGrade: latest?.grade ?? null,
-        riskScore: riskRow?.score ?? null,
-        reviewCount,
-      };
-    })
-    .sort((a, b) => (a.riskScore ?? 0) - (b.riskScore ?? 0));
+  const ranked = (rows ?? []).map((row) => {
+    const f = Array.isArray(row.facilities) ? row.facilities[0] : row.facilities;
+    const evals = Array.isArray(f.evaluations) ? f.evaluations : [];
+    const latest = [...evals].sort((a, b) => b.eval_year - a.eval_year)[0];
+    const reviewCount = Array.isArray(f.reviews) ? f.reviews.length : 0;
+    return {
+      ...f,
+      latestGrade: latest?.grade ?? null,
+      riskScore: row.score,
+      reviewCount,
+    };
+  });
 
-  const reviewToggleParams = new URLSearchParams();
-  reviewToggleParams.set("mobility", mobility);
-  reviewToggleParams.set("cognition", cognition);
-  reviewToggleParams.set("medicalNeed", medicalNeed);
-  if (region) reviewToggleParams.set("region", region);
-  if (!hasReviewsOnly) reviewToggleParams.set("hasReviews", "1");
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
+
+  const baseParams = new URLSearchParams();
+  baseParams.set("mobility", mobility);
+  baseParams.set("cognition", cognition);
+  baseParams.set("medicalNeed", medicalNeed);
+  if (region) baseParams.set("region", region);
+  if (hasReviewsOnly) baseParams.set("hasReviews", "1");
+
+  const pageHref = (p: number) => {
+    const params = new URLSearchParams(baseParams);
+    if (p > 1) params.set("page", String(p));
+    return `/results?${params.toString()}`;
+  };
+
+  const reviewToggleParams = new URLSearchParams(baseParams);
+  if (hasReviewsOnly) reviewToggleParams.delete("hasReviews");
+  else reviewToggleParams.set("hasReviews", "1");
 
   return (
     <main className="mx-auto flex max-w-3xl flex-1 flex-col px-6 py-12">
@@ -105,7 +124,13 @@ export default async function ResultsPage({
         </p>
       )}
 
-      <div className="mt-6 flex flex-col gap-3">
+      {!error && (count ?? 0) > 0 && (
+        <p className="mt-6 text-xs text-zinc-400">
+          총 {count}곳 중 {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, count ?? 0)}번째
+        </p>
+      )}
+
+      <div className="mt-3 flex flex-col gap-3">
         {ranked.map((f) => (
           <FacilityCard
             key={f.id}
@@ -121,6 +146,50 @@ export default async function ResultsPage({
           />
         ))}
       </div>
+
+      {totalPages > 1 && (
+        <nav className="mt-8 flex items-center justify-center gap-1 text-sm">
+          <Link
+            href={pageHref(Math.max(1, page - 1))}
+            aria-disabled={page === 1}
+            className={`rounded-md px-3 py-1.5 ${
+              page === 1
+                ? "pointer-events-none text-zinc-300"
+                : "text-zinc-600 hover:bg-purple-50 hover:text-purple-700"
+            }`}
+          >
+            이전
+          </Link>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+            .map((p, i, arr) => (
+              <span key={p} className="flex items-center">
+                {i > 0 && arr[i - 1] !== p - 1 && <span className="px-1 text-zinc-300">…</span>}
+                <Link
+                  href={pageHref(p)}
+                  className={`min-w-9 rounded-md px-3 py-1.5 text-center ${
+                    p === page
+                      ? "bg-purple-600 font-semibold text-white"
+                      : "text-zinc-600 hover:bg-purple-50 hover:text-purple-700"
+                  }`}
+                >
+                  {p}
+                </Link>
+              </span>
+            ))}
+          <Link
+            href={pageHref(Math.min(totalPages, page + 1))}
+            aria-disabled={page === totalPages}
+            className={`rounded-md px-3 py-1.5 ${
+              page === totalPages
+                ? "pointer-events-none text-zinc-300"
+                : "text-zinc-600 hover:bg-purple-50 hover:text-purple-700"
+            }`}
+          >
+            다음
+          </Link>
+        </nav>
+      )}
     </main>
   );
 }
