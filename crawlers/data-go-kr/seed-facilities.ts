@@ -12,7 +12,7 @@
  * - 우리 서비스가 다루지 않는 유형(방문목욕/방문간호/단기보호/복지용구만 있는 기관)은 제외.
  */
 import { db, startCrawlRun, finishCrawlRun, fetchAllRows } from "../shared/db";
-import { bestFacilityMatch } from "../shared/fuzzy";
+import { buildNameIndex, matchWithIndex } from "../shared/fuzzy";
 import {
   downloadFacilityStatusWorkbook,
   computeStaffRichnessByCode,
@@ -133,10 +133,15 @@ async function run() {
     const existingPool = await fetchAllRows<{ id: string; name: string; address: string | null }>(
       (from, to) => db.from("facilities").select("id, name, address").order("id").range(from, to)
     );
+    // existingPool이 시드 이후 26,000곳 이상으로 커진 상태에서 27,135개 후보를 전체 풀과
+    // 매번 1:1 비교(bestFacilityMatch)하면 수억 회 문자열 비교가 발생해 매칭 단계가 오래
+    // 멈춰 있다가 그 사이 DB 커넥션이 유휴 상태로 끊겨 insert에서 EPIPE가 났다 — 9번
+    // 항목에서 평가등급 크롤러에 적용했던 이름 인덱스를 여기에도 적용한다.
+    const nameIndex = buildNameIndex(existingPool);
 
     const toInsert: Record<string, unknown>[] = [];
     for (const candidate of bestByKey.values()) {
-      const match = bestFacilityMatch(candidate.name, candidate.address, existingPool);
+      const match = matchWithIndex(candidate.name, candidate.address, nameIndex);
       if (match && match.confidence >= 0.6) {
         skippedExisting++;
         continue;
