@@ -11,6 +11,8 @@ import { fetchHiraNonPaymentItems } from "@/lib/hiraNonPayment";
 
 const SOURCE_LABEL: Record<string, string> = {
   silvercarekorea: "실버케어코리아",
+  datagokr: "공공데이터포털(data.go.kr)",
+  hira: "건강보험심사평가원",
 };
 
 export default async function FacilityDetailPage({
@@ -182,6 +184,16 @@ export default async function FacilityDetailPage({
                 {v.violation_date} — {v.violation_type} ({v.penalty})
                 {v.match_confidence != null && v.match_confidence < 0.6 && (
                   <span className="ml-1 text-xs text-red-400">(매칭 신뢰도 낮음 — 참고용)</span>
+                )}
+                {v.source_url && (
+                  <a
+                    href={v.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-2 text-xs text-red-400 underline hover:text-red-600"
+                  >
+                    명단공표 원문 보기 ↗
+                  </a>
                 )}
               </li>
             ))}

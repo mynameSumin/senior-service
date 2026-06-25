@@ -5,6 +5,7 @@ import XLSX from "xlsx";
 import { fetchJson } from "../shared/http";
 
 const FACILITY_STATUS_PUBLIC_DATA_PK = "15124763";
+export const FACILITY_STATUS_DATASET_URL = `https://www.data.go.kr/data/${FACILITY_STATUS_PUBLIC_DATA_PK}/fileData.do`;
 
 export async function downloadFacilityStatusWorkbook(): Promise<XLSX.WorkBook> {
   const info = await fetchJson<{ atchFileId: string; fileDetailSn: string; status: boolean }>(

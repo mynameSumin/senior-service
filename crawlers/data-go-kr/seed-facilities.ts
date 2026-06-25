@@ -18,6 +18,7 @@ import {
   computeStaffRichnessByCode,
   resolveFacilityType,
   categorizeFacilityTypeName,
+  FACILITY_STATUS_DATASET_URL,
 } from "./facilityStatusFile";
 import XLSX from "xlsx";
 
@@ -149,7 +150,9 @@ async function run() {
         capacity_total: candidate.capacityTotal,
         long_term_admin_sym: candidate.code,
         admin_pttn_cd: candidate.adminPttnCd,
-        external_urls: {},
+        // longtermcare.or.kr 시설 상세페이지는 세션 기반 POST 흐름이라 직접 링크가 안 먹는다(빈 화면) —
+        // 실제로 이 데이터를 받아온 곳인 data.go.kr 데이터셋 페이지를 원본으로 링크한다.
+        external_urls: { datagokr: FACILITY_STATUS_DATASET_URL },
       });
     }
 

@@ -128,7 +128,7 @@ async function run() {
             address,
             region_sido: SIDO_SHORT_TO_FULL[row.sidoCdNm] ?? row.sidoCdNm ?? null,
             phone: row.yadmGdTelnoTxt || null,
-            external_urls: {},
+            external_urls: { hira: `https://www.hira.or.kr/ra/hosp/hospInfoAjax.do?ykiho=${row.ykiho}` },
           })
           .select("id")
           .single();
