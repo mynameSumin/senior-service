@@ -237,3 +237,27 @@ B550928용으로 승인된 키라고 B551182도 자동으로 열리지 않는다
 
 해결 후 `lib/hiraNonPayment.ts`를 추가해 평가등급 적재 시 같이 저장해둔 ykiho로 시설 상세페이지
 에서 실시간 조회하도록 연결했다(요양원의 비급여 조회와 동일한 "클릭 시점 실시간 호출" 패턴).
+
+## 12. 원본 페이지 외부 링크 — 실버케어코리아 말고는 비어 있었다
+
+과제 제한사항에 "크롤링한 원본 페이지로 이동하는 외부 링크"가 명시돼 있는데, `external_urls`를
+실제로 채우는 건 `crawlers/silvercarekorea/run.ts`뿐이었다 — `seed-facilities.ts`와
+`crawlers/hira/run.ts`는 둘 다 `external_urls: {}`로 비워둔 채 적재하고 있었다(전체 시설의
+대다수가 이 두 크롤러 출처였다).
+
+소스별로 실제로 열리는 링크를 다시 확인해야 했다:
+
+- **요양병원(HIRA)**: 7번 항목에서 "JSON이 아니라 HTML이라 포기"했던
+  `hospInfoAjax.do?ykiho=...`가, 외부 링크 목적으로는 오히려 정답이었다 — Playwright로
+  렌더링해보니 그 자체로 병상수·진료과목·인증정보까지 다 보여주는 완성된 상세페이지였다.
+- **요양원/주야간보호/방문요양(data.go.kr 시드분)**: longtermcare.or.kr의 시설 상세 URL
+  패턴(`selectLtcoSrchDetail.web?ltcAdminSym=...&adminPttnCd=...`)을 찾아 Playwright로
+  직접 열어봤지만 탭 껍데기만 뜨고 본문이 비어 있었다(세션 기반 POST 흐름이라 GET 직접 접근이
+  안 됨 — 1번 항목에서 이미 robots.txt로 차단된 이유와는 별개로, 차단이 없었어도 이 방식으로는
+  안 됐을 것). 대신 실제로 이 시설 데이터를 받아온 data.go.kr 데이터셋 페이지
+  (`/data/15124763/fileData.do`)로 연결했다 — "크롤링해온 곳"을 더 정확하게 반영하는 링크다.
+- **거짓청구**: `violations.source_url`은 처음부터 DB에 저장하고 있었는데 상세페이지 UI에서
+  렌더링을 빼먹고 있었다. 단순 누락이라 바로 추가.
+
+이미 적재된 기존 행(빈 `external_urls`로 들어간 요양원 24,944곳, 요양병원 1,033곳)은 두
+크롤러를 고친 뒤 `crawlers/data-go-kr/backfill-external-urls.ts` 일회성 스크립트로 채웠다.
