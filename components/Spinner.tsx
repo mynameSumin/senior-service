@@ -1,7 +1,13 @@
-export default function Spinner({ size = 28 }: { size?: number }) {
+export default function Spinner({
+  size = 28,
+  className = "text-purple-600",
+}: {
+  size?: number;
+  className?: string;
+}) {
   return (
     <svg
-      className="animate-spin text-purple-600"
+      className={`animate-spin ${className}`}
       width={size}
       height={size}
       viewBox="0 0 24 24"

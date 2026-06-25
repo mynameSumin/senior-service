@@ -9,6 +9,7 @@ import {
 import FacilityCard from "@/components/FacilityCard";
 import FeeGuide from "@/components/FeeGuide";
 import RiskScoreInfo from "@/components/RiskScoreInfo";
+import ReviewFilterToggle from "@/components/ReviewFilterToggle";
 
 const PAGE_SIZE = 10;
 
@@ -112,16 +113,10 @@ export default async function ResultsPage({
       <p className="mt-2 text-sm text-zinc-600">{match.reason}</p>
       <div className="mt-3 flex flex-col items-start gap-2">
         <RiskScoreInfo />
-        <Link
+        <ReviewFilterToggle
           href={`/results?${reviewToggleParams.toString()}`}
-          className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-            hasReviewsOnly
-              ? "border-purple-600 bg-purple-600 text-white"
-              : "border-zinc-300 text-zinc-600 hover:border-purple-300 hover:text-purple-700"
-          }`}
-        >
-          ✓ 이용자 후기 있는 시설만
-        </Link>
+          active={hasReviewsOnly}
+        />
       </div>
 
       <form action="/results" method="get" className="mt-4 flex gap-2">
