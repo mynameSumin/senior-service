@@ -10,6 +10,7 @@ interface Props {
   capacityCurrent: number | null;
   latestGrade?: string | null;
   riskScore?: number | null;
+  reviewCount?: number;
 }
 
 export default function FacilityCard({
@@ -21,6 +22,7 @@ export default function FacilityCard({
   capacityCurrent,
   latestGrade,
   riskScore,
+  reviewCount,
 }: Props) {
   return (
     <Link
@@ -42,6 +44,7 @@ export default function FacilityCard({
             정원 {capacityTotal}명{capacityCurrent != null ? ` · 현원 ${capacityCurrent}명` : ""}
           </span>
         )}
+        {!!reviewCount && <span className="text-purple-600">이용자 후기 {reviewCount}개</span>}
       </div>
     </Link>
   );
