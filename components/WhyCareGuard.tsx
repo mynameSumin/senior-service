@@ -25,18 +25,26 @@ export default function WhyCareGuard() {
   return (
     <section className="mx-auto mt-20 w-full max-w-3xl text-left">
       <div className="text-center">
-        <h2 className="text-xl font-bold text-zinc-900">가격이 아니라, 관리가 문제입니다</h2>
+        <h2 className="text-xl font-bold text-zinc-900">
+          가격이 아니라, 관리가 문제입니다
+        </h2>
         <p className="mt-3 text-sm text-zinc-600">
-          요양·돌봄 시설은 가격표만 봐서는 좋은 곳을 고를 수 없습니다. 실제로 중요한 건
-          이 시설이 어떻게 운영되고 있는지, 어떤 평가를 받았는지, 인력은 충분한지,
-          먼저 이용해본 가족들은 뭐라고 하는지입니다. 케어가드는 이 네 가지를 모아
-          0~100점 위험도 점수로 정리해 보여드립니다.
+          요양·돌봄 시설은 가격표만 봐서는 좋은 곳을 고를 수 없습니다. 실제로
+          중요한 건 이 시설이 어떻게 운영되고 있는지, 어떤 평가를 받았는지,
+          인력은 충분한지, 먼저 이용해본 가족들은 뭐라고 하는지입니다.
+        </p>
+        <p className="mt-3 text-sm text-zinc-600">
+          우리 서비스는 이 네 가지를 모아 0~100점 위험도 점수로 정리해
+          보여드립니다.
         </p>
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {CRITERIA.map((c) => (
-          <div key={c.title} className="rounded-xl border border-zinc-200 bg-white p-5">
+          <div
+            key={c.title}
+            className="rounded-xl border border-zinc-200 bg-white p-5"
+          >
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-50 text-lg">
               {c.icon}
             </span>

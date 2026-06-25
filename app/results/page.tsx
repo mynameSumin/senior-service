@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { matchFacilityType, type Cognition, type MedicalNeed, type Mobility } from "@/lib/matching";
+import {
+  matchFacilityType,
+  type Cognition,
+  type MedicalNeed,
+  type Mobility,
+} from "@/lib/matching";
 import FacilityCard from "@/components/FacilityCard";
 import FeeGuide from "@/components/FeeGuide";
 import RiskScoreInfo from "@/components/RiskScoreInfo";
@@ -14,6 +19,7 @@ interface SearchParams {
   region?: string;
   hasReviews?: string;
   page?: string;
+  q?: string;
 }
 
 export default async function ResultsPage({
@@ -27,6 +33,7 @@ export default async function ResultsPage({
   const medicalNeed = (sp.medicalNeed ?? "low") as MedicalNeed;
   const region = sp.region;
   const hasReviewsOnly = sp.hasReviews === "1";
+  const q = sp.q?.trim() ?? "";
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
   const match = matchFacilityType({ mobility, cognition, medicalNeed, region });
@@ -41,18 +48,21 @@ export default async function ResultsPage({
     .from("risk_scores")
     .select(
       `score, facilities!inner(id, name, type, address, region_sido, capacity_total, capacity_current, evaluations(eval_year, grade), ${reviewsField})`,
-      { count: "exact" }
+      { count: "exact" },
     )
     .in("facilities.type", match.recommendedTypes)
     .order("score", { ascending: true })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
   if (region) query = query.eq("facilities.region_sido", region);
+  if (q) query = query.ilike("facilities.name", `%${q}%`);
 
   const { data: rows, error, count } = await query;
 
   const ranked = (rows ?? []).map((row) => {
-    const f = Array.isArray(row.facilities) ? row.facilities[0] : row.facilities;
+    const f = Array.isArray(row.facilities)
+      ? row.facilities[0]
+      : row.facilities;
     const evals = Array.isArray(f.evaluations) ? f.evaluations : [];
     const latest = [...evals].sort((a, b) => b.eval_year - a.eval_year)[0];
     const reviewCount = Array.isArray(f.reviews) ? f.reviews.length : 0;
@@ -72,6 +82,7 @@ export default async function ResultsPage({
   baseParams.set("medicalNeed", medicalNeed);
   if (region) baseParams.set("region", region);
   if (hasReviewsOnly) baseParams.set("hasReviews", "1");
+  if (q) baseParams.set("q", q);
 
   const pageHref = (p: number) => {
     const params = new URLSearchParams(baseParams);
@@ -79,18 +90,26 @@ export default async function ResultsPage({
     return `/results?${params.toString()}`;
   };
 
+  const paramsWithoutQuery = new URLSearchParams(baseParams);
+  paramsWithoutQuery.delete("q");
+
   const reviewToggleParams = new URLSearchParams(baseParams);
   if (hasReviewsOnly) reviewToggleParams.delete("hasReviews");
   else reviewToggleParams.set("hasReviews", "1");
 
   return (
     <main className="mx-auto flex max-w-3xl flex-1 flex-col px-6 py-12">
-      <Link href="/match" className="text-sm text-zinc-500 hover:text-purple-700 hover:underline">
+      <Link
+        href="/match"
+        className="text-sm text-zinc-500 hover:text-purple-700 hover:underline"
+      >
         ← 조건 다시 입력
       </Link>
-      <h1 className="mt-3 text-2xl font-bold text-zinc-900">추천 시설 유형: {match.recommendedTypes.join(", ")}</h1>
+      <h1 className="mt-3 text-2xl font-bold text-zinc-900">
+        추천 시설 유형: {match.recommendedTypes.join(", ")}
+      </h1>
       <p className="mt-2 text-sm text-zinc-600">{match.reason}</p>
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex flex-col items-start gap-2">
         <RiskScoreInfo />
         <Link
           href={`/results?${reviewToggleParams.toString()}`}
@@ -104,29 +123,68 @@ export default async function ResultsPage({
         </Link>
       </div>
 
+      <form action="/results" method="get" className="mt-4 flex gap-2">
+        <input type="hidden" name="mobility" value={mobility} />
+        <input type="hidden" name="cognition" value={cognition} />
+        <input type="hidden" name="medicalNeed" value={medicalNeed} />
+        {region && <input type="hidden" name="region" value={region} />}
+        {hasReviewsOnly && <input type="hidden" name="hasReviews" value="1" />}
+        <input
+          type="text"
+          name="q"
+          defaultValue={q}
+          placeholder="시설 이름으로 검색"
+          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-purple-400 focus:outline-none"
+        />
+        <button
+          type="submit"
+          className="rounded-lg text-nowrap bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+        >
+          검색
+        </button>
+        {q && (
+          <Link
+            href={`/results?${paramsWithoutQuery.toString()}`}
+            className="flex text-nowrap items-center rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-500 hover:text-zinc-700"
+          >
+            초기화
+          </Link>
+        )}
+      </form>
+
       {match.recommendedTypes.includes("요양원") && <FeeGuide />}
 
       {error && (
         <p className="mt-6 text-sm text-red-600">
-          데이터를 불러오지 못했습니다. (데이터 적재가 아직 진행 중일 수 있습니다)
+          데이터를 불러오지 못했습니다. (데이터 적재가 아직 진행 중일 수
+          있습니다)
         </p>
       )}
 
-      {!error && ranked.length === 0 && hasReviewsOnly && (
+      {!error && ranked.length === 0 && q && (
         <p className="mt-10 text-sm text-zinc-500">
-          이용자 후기가 등록된 시설이 없습니다. 필터를 해제하면 더 많은 시설을 볼 수 있습니다.
+          &ldquo;{q}&rdquo;와 일치하는 시설을 찾지 못했습니다.
         </p>
       )}
 
-      {!error && ranked.length === 0 && !hasReviewsOnly && (
+      {!error && ranked.length === 0 && !q && hasReviewsOnly && (
         <p className="mt-10 text-sm text-zinc-500">
-          조건에 맞는 시설을 아직 찾지 못했습니다. 지역을 &ldquo;전국&rdquo;으로 넓혀보세요.
+          이용자 후기가 등록된 시설이 없습니다. 필터를 해제하면 더 많은 시설을
+          볼 수 있습니다.
+        </p>
+      )}
+
+      {!error && ranked.length === 0 && !q && !hasReviewsOnly && (
+        <p className="mt-10 text-sm text-zinc-500">
+          조건에 맞는 시설을 아직 찾지 못했습니다. 지역을 &ldquo;전국&rdquo;으로
+          넓혀보세요.
         </p>
       )}
 
       {!error && (count ?? 0) > 0 && (
         <p className="mt-6 text-xs text-zinc-400">
-          총 {count}곳 중 {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, count ?? 0)}번째
+          총 {count}곳 중 {(page - 1) * PAGE_SIZE + 1}–
+          {Math.min(page * PAGE_SIZE, count ?? 0)}번째
         </p>
       )}
 
@@ -161,10 +219,14 @@ export default async function ResultsPage({
             이전
           </Link>
           {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+            .filter(
+              (p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2,
+            )
             .map((p, i, arr) => (
               <span key={p} className="flex items-center">
-                {i > 0 && arr[i - 1] !== p - 1 && <span className="px-1 text-zinc-300">…</span>}
+                {i > 0 && arr[i - 1] !== p - 1 && (
+                  <span className="px-1 text-zinc-300">…</span>
+                )}
                 <Link
                   href={pageHref(p)}
                   className={`min-w-9 rounded-md px-3 py-1.5 text-center ${
